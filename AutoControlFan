@@ -1,0 +1,77 @@
+#!/bin/bash
+# /etc/init.d/fancontroler
+  
+### BEGIN INIT INFO
+# Provides: embbnux
+# Required-Start: $remote_fs $syslog
+# Required-Stop: $remote_fs $syslog
+# Default-Start: 2 3 4 5
+# Default-Stop: 0 1 6
+# Short-Description: CPU fan control
+# Description: This service is used to control cpu fan.
+### END INIT INFO
+
+PID_FILE=/var/run/autocontrolfan.pid
+LOG_FILE=/var/log/raspberrypiFanSpeed.log
+
+check_running() {
+	if [ -r $PID_FILE ]; then
+		read PID < $PID_FILE
+		if [ -d "/proc/$PID" ]; then
+			return 0
+		else
+			rm -f $PID_FILE
+			return 1
+		fi
+	else
+		return 2
+	fi
+}
+do_status() {
+	check_running
+	case $? in
+	    0)
+	    echo "autocontrolfan (pid: $PID)is running..."
+	    ;;
+	    1|2)
+	    echo "autocontrolfan is stopped"
+	    RET_VAL=1
+	    ;;
+	esac
+}
+
+do_start() {
+	if check_running; then
+	    echo "autocontrolfan (pid: $PID)is running..."
+	    return 0
+	fi
+	autocontrolfan -q &
+	if check_running; then
+	    echo "start AutoControlFan success"
+	else
+	    echo "start AutoControlFan failed"
+	    RET_VAL=1
+	fi
+}
+
+do_stop() {
+	if check_running; then
+		kill $PID
+		rm -f $PID_FILE
+		echo "Stopping AutoControlFan success"
+	else
+		echo "AutoControlFan is stopped"
+		RET_VAL=1
+	fi
+}
+
+case "$1" in
+	start|stop|restart|status)
+	do_$1
+	;;
+	*)
+	echo "Usage $0 { start | stop | restart | status  }"
+	RET_VAL=1
+	;;
+esac
+exit $RET_VAL
